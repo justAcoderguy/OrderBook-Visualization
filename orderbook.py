@@ -9,11 +9,33 @@ import math
 
 app = Dash(external_stylesheets=[dbc.themes.CYBORG])
 
+# Function to make reuseable dropdowns
+def dropdown_option(title, options, default_value, _id):
+    return html.Div(children=[
+        html.H2(title),
+        dcc.Dropdown(options=options, value=default_value, id=_id)
+    ])
+
 app.layout = html.Div(children=[
-    html.Div(children=[
+    # Div 1
+    html.Div(
+        children=[
         dash_table.DataTable(id="bid_table"),
-        dcc.Interval(id="timer", interval=3000),
-    ], style={"width": "20%"}),
+        ], style={"width": "20%"}
+    ),
+
+    # Div 2
+    html.Div(
+        children=[
+            dropdown_option("Aggregate Level",
+                options=["0.01", "0.1", "1", "10", "100"],
+                default_value="0.01",
+                _id="aggregation_level"
+            )
+        ]
+    ),
+
+    dcc.Interval(id="timer", interval=3000)
 ])
 
 
@@ -58,7 +80,7 @@ def aggregate_levels(levels_df, agg_level=Decimal('0.1'), side="bid"):
 
 @app.callback(
     Output("bid_table", "data"),
-    Input("timer", "interval"),
+    Input("timer", "interval"), # Triggers
 )
 def update_orderbook(interval):
     base_url = "https://api.binance.com"
