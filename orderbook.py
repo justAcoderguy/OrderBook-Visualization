@@ -23,6 +23,7 @@ app.layout = html.Div(children=[
         html.Div(
             children=[
             dash_table.DataTable(id="ask_table"),
+            html.H2(id="mid_price"),
             dash_table.DataTable(id="bid_table"),
             ], style={"width": "20%"}
         ),
@@ -78,7 +79,7 @@ def aggregate_levels(levels_df, agg_level=Decimal('0.1'), side="bid"):
     levels_df["bin"] = pd.cut(levels_df.price, bins=level_bounds, 
                               precision=10, right=right)
     
-    levels_df = levels_df.groupby("bin").agg(
+    levels_df = levels_df.groupby("bin", observed=False).agg(
         quantity = ("quantity", "sum")).reset_index()
     
     levels_df["price"] = levels_df.bin.apply(label_func)
@@ -93,9 +94,10 @@ def aggregate_levels(levels_df, agg_level=Decimal('0.1'), side="bid"):
 @app.callback(
     Output("bid_table", "data"),
     Output("ask_table", "data"),
+    Output("mid_price", "children"),
     Input("aggregation_level", "value"), # Triggers when theres a change in the agg level dropdown
     Input("pair_select", "value"),
-    Input("timer", "interval"), # Triggers at an interval set by dcc.interval
+    Input("timer", "n_intervals"), # Triggers at an interval set by dcc.interval
 )
 def update_orderbook(agg_level, pair, interval):
     base_url = "https://api.binance.com"
@@ -125,7 +127,10 @@ def update_orderbook(agg_level, pair, interval):
     bids_df = bids_df.iloc[:levels_to_show] # largest of the bids shown
     asks_df = asks_df.iloc[-levels_to_show:] # smallest of the asks shown
 
-    return bids_df.to_dict("records"), asks_df.to_dict("records")  # converts to list of dictionaries
+    # mid_price = (largest bid + smallest ask) / 2
+    mid_price = (bids_df.price.iloc[0] + asks_df.price.iloc[-1])/2 
+
+    return bids_df.to_dict("records"), asks_df.to_dict("records"), mid_price  # converts to list of dictionaries
 
 
 if __name__ == "__main__":
