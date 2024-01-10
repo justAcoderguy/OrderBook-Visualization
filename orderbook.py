@@ -80,9 +80,10 @@ def aggregate_levels(levels_df, agg_level=Decimal('0.1'), side="bid"):
 
 @app.callback(
     Output("bid_table", "data"),
-    Input("timer", "interval"), # Triggers
+    Input("aggregation_level", "value"), # Triggers when theres a change in the agg level dropdown
+    Input("timer", "interval"), # Triggers at an interval set by dcc.interval
 )
-def update_orderbook(interval):
+def update_orderbook(agg_level, interval):
     base_url = "https://api.binance.com"
     order_book_endpoint = "/api/v3/depth"
 
@@ -101,7 +102,7 @@ def update_orderbook(interval):
                            columns=["price", "quantity"], dtype=float)
     
     
-    bids_df = aggregate_levels(bids_df, agg_level=Decimal('0.1'), side="bid")
+    bids_df = aggregate_levels(bids_df, agg_level=Decimal(agg_level), side="bid")
 
 
     bids_df = bids_df.iloc[:levels_to_show]
