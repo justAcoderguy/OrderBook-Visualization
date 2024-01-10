@@ -40,6 +40,16 @@ app.layout = html.Div(children=[
                     options=["ETHUSDT", "BTCUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "BDOTDOT"],
                     default_value="ETHUSDT",
                     _id="pair_select"
+                ),
+                dropdown_option("Quantity Precision",
+                    options=["0", "1", "2", "3", "4"],
+                    default_value="3",
+                    _id="quantity_precision"
+                ),
+                dropdown_option("Price Precision",
+                    options=["0", "1", "2", "3", "4"],
+                    default_value="3",
+                    _id="price_precision"
                 )
             ], style={"padding-left": "50px"}
         ),
@@ -96,10 +106,12 @@ def aggregate_levels(levels_df, agg_level=Decimal('0.1'), side="bid"):
     Output("ask_table", "data"),
     Output("mid_price", "children"),
     Input("aggregation_level", "value"), # Triggers when theres a change in the agg level dropdown
+    Input("quantity_precision", "value"),
+    Input("price_precision", "value"),
     Input("pair_select", "value"),
     Input("timer", "n_intervals"), # Triggers at an interval set by dcc.interval
 )
-def update_orderbook(agg_level, pair, interval):
+def update_orderbook(agg_level, quantity_precision, price_precision, pair, interval):
     base_url = "https://api.binance.com"
     order_book_endpoint = "/api/v3/depth"
 
@@ -123,12 +135,23 @@ def update_orderbook(agg_level, pair, interval):
     bids_df = bids_df.sort_values("price", ascending=False) # sort values of orderbook in desc
     asks_df = asks_df.sort_values("price", ascending=False) # sort values of orderbook in asc
 
+    # mid_price = (largest bid + smallest ask) / 2
+    mid_price = (bids_df.price.iloc[0] + asks_df.price.iloc[-1])/2 
 
     bids_df = bids_df.iloc[:levels_to_show] # largest of the bids shown
     asks_df = asks_df.iloc[-levels_to_show:] # smallest of the asks shown
 
-    # mid_price = (largest bid + smallest ask) / 2
-    mid_price = (bids_df.price.iloc[0] + asks_df.price.iloc[-1])/2 
+    bids_df.quantity = bids_df.quantity.apply(
+        lambda x : f"%.{quantity_precision}f" % x)
+    asks_df.quantity = asks_df.quantity.apply(
+        lambda x : f"%.{quantity_precision}f" % x)
+    
+    bids_df.price = bids_df.price.apply(
+        lambda x : f"%.{price_precision}f" % x)
+    asks_df.price = asks_df.price.apply(
+        lambda x : f"%.{price_precision}f" % x)
+    
+    mid_price = f"%.{price_precision}f" % mid_price
 
     return bids_df.to_dict("records"), asks_df.to_dict("records"), mid_price  # converts to list of dictionaries
 
