@@ -17,23 +17,35 @@ def dropdown_option(title, options, default_value, _id):
     ])
 
 app.layout = html.Div(children=[
-    # Div 1
-    html.Div(
-        children=[
-        dash_table.DataTable(id="bid_table"),
-        ], style={"width": "20%"}
-    ),
+    # Parent Div
+    html.Div(children=[
+        # Ask and Bid table
+        html.Div(
+            children=[
+            dash_table.DataTable(id="ask_table"),
+            dash_table.DataTable(id="bid_table"),
+            ], style={"width": "20%"}
+        ),
 
-    # Div 2
-    html.Div(
-        children=[
-            dropdown_option("Aggregate Level",
-                options=["0.01", "0.1", "1", "10", "100"],
-                default_value="0.01",
-                _id="aggregation_level"
-            )
-        ]
-    ),
+        # Aggregate and Pair dropdowns
+        html.Div(
+            children=[
+                dropdown_option("Aggregate Level",
+                    options=["0.01", "0.1", "1", "10", "100"],
+                    default_value="0.01",
+                    _id="aggregation_level"
+                ),
+                dropdown_option("Pair",
+                    options=["ETHUSDT", "BTCUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "BDOTDOT"],
+                    default_value="ETHUSDT",
+                    _id="pair_select"
+                )
+            ], style={"padding-left": "50px"}
+        ),
+    ], style={"display": "flex",
+              "justify-content": "center", # horizontally centered
+              "align-items": "center", # Vertically centered
+              "height": "100vh"}), 
 
     dcc.Interval(id="timer", interval=3000)
 ])
@@ -80,10 +92,12 @@ def aggregate_levels(levels_df, agg_level=Decimal('0.1'), side="bid"):
 
 @app.callback(
     Output("bid_table", "data"),
+    Output("ask_table", "data"),
     Input("aggregation_level", "value"), # Triggers when theres a change in the agg level dropdown
+    Input("pair_select", "value"),
     Input("timer", "interval"), # Triggers at an interval set by dcc.interval
 )
-def update_orderbook(agg_level, interval):
+def update_orderbook(agg_level, pair, interval):
     base_url = "https://api.binance.com"
     order_book_endpoint = "/api/v3/depth"
 
@@ -92,22 +106,26 @@ def update_orderbook(agg_level, interval):
     levels_to_show = 10
 
     params = {
-        "symbol": "ETHUSDT",
+        "symbol": pair.upper(),
         "limit": "100",
     }
 
     data = requests.get(orderbook_url, params=params).json()
 
-    bids_df = pd.DataFrame(data["bids"],
-                           columns=["price", "quantity"], dtype=float)
-    
-    
+    bids_df = pd.DataFrame(data["bids"], columns=["price", "quantity"], dtype=float)
+    asks_df = pd.DataFrame(data["asks"], columns=["price", "quantity"], dtype=float)
+     
     bids_df = aggregate_levels(bids_df, agg_level=Decimal(agg_level), side="bid")
+    asks_df = aggregate_levels(asks_df, agg_level=Decimal(agg_level), side="ask")
+
+    bids_df = bids_df.sort_values("price", ascending=False) # sort values of orderbook in desc
+    asks_df = asks_df.sort_values("price", ascending=False) # sort values of orderbook in asc
 
 
-    bids_df = bids_df.iloc[:levels_to_show]
+    bids_df = bids_df.iloc[:levels_to_show] # largest of the bids shown
+    asks_df = asks_df.iloc[-levels_to_show:] # smallest of the asks shown
 
-    return bids_df.to_dict("records")  # converts to list of dictionaries
+    return bids_df.to_dict("records"), asks_df.to_dict("records")  # converts to list of dictionaries
 
 
 if __name__ == "__main__":
