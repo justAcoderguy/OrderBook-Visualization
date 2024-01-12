@@ -27,14 +27,16 @@ app.layout = html.Div(children=[
                                  style_cell={"minWidth":"140px",
                                               "max_width":"140px",
                                               "width":"140px",
-                                              "text-align":"center"}),
+                                              "text-align":"right",
+                                              "border":"none"}),
             html.H2(id="mid_price", style={"padding-top":"30px", "text-align":"center"}),
             dash_table.DataTable(id="bid_table", 
                                  style_header={"display":"none"},
                                  style_cell={"minWidth":"140px",
                                               "max_width":"140px",
                                               "width":"140px",
-                                              "text-align":"center"}),
+                                              "text-align":"right",
+                                              "border": "none"}),
             ], style={"width": "20%"}
         ),
 
