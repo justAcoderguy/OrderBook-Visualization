@@ -22,9 +22,19 @@ app.layout = html.Div(children=[
         # Ask and Bid table
         html.Div(
             children=[
-            dash_table.DataTable(id="ask_table"),
-            html.H2(id="mid_price"),
-            dash_table.DataTable(id="bid_table"),
+            dash_table.DataTable(id="ask_table",
+                                 style_header={"display":"none"},
+                                 style_cell={"minWidth":"140px",
+                                              "max_width":"140px",
+                                              "width":"140px",
+                                              "text-align":"center"}),
+            html.H2(id="mid_price", style={"padding-top":"30px", "text-align":"center"}),
+            dash_table.DataTable(id="bid_table", 
+                                 style_header={"display":"none"},
+                                 style_cell={"minWidth":"140px",
+                                              "max_width":"140px",
+                                              "width":"140px",
+                                              "text-align":"center"}),
             ], style={"width": "20%"}
         ),
 
@@ -60,6 +70,63 @@ app.layout = html.Div(children=[
 
     dcc.Interval(id="timer", interval=3000)
 ])
+
+def table_styling(df, side):
+    if side == "ask":
+        bar_colour = "rgba(230, 31, 7, 0.2)"
+        font_colour = "rgba(230, 31, 7)"
+    elif side == "bid":
+        bar_colour = "rgba(13, 230, 49, 0.2)"
+        font_colour = "rgba(13, 230 , 49)"
+
+    # gradient colouring 
+    n_bins = 25
+    bounds = [i * (1.0/n_bins) for i in range(n_bins + 1)] # generates n_bins percentages from 0 to 1
+
+    _quantity = df.quantity.astype(float)
+    # generates n_bins ranges from the bounds ( percentages above ) from the total quantity range in the df
+    ranges = [((_quantity.max() - _quantity.min()) * i) + _quantity.min() for i in bounds] 
+
+    cell_bg_colour = "#060606"
+
+    styles = []
+
+    for i in range(1, len(bounds)):
+        min_bound = ranges[i-1]
+        max_bound = ranges[i]
+        max_bound_percentage = bounds[i] * 100
+
+        styles.append({
+            "if": {
+                'filter_query': (
+                    '{{{column}}} >= {min_bound}' +
+                    (' && {{{column}}} < {max_bound}' if (i < len(bounds) - 1) else '')
+                ).format(column="quantity", min_bound=min_bound, max_bound=max_bound),
+                "column_id": "quantity",
+            },
+            "background": (
+                """
+                    linear-gradient(270deg,
+                    {bar_colour} 0%,
+                    {bar_colour} {max_bound_percentage}%,
+                    {cell_bg_colour} {max_bound_percentage}%,
+                    {cell_bg_colour} 100%
+                    ) 
+                """.format(bar_colour=bar_colour, cell_bg_colour=cell_bg_colour,
+                            max_bound_percentage=max_bound_percentage),
+            ),
+            "paddingBottom":2,
+            "paddingTop":2,
+        })
+
+    styles.append({
+        "if": {"column_id":"price"},
+        "color": font_colour,
+        "background-color": cell_bg_colour,
+    })
+
+    return styles
+
 
 
 """
@@ -103,7 +170,9 @@ def aggregate_levels(levels_df, agg_level=Decimal('0.1'), side="bid"):
 
 @app.callback(
     Output("bid_table", "data"),
+    Output("bid_table", "style_data_conditional"),
     Output("ask_table", "data"),
+    Output("ask_table", "style_data_conditional"),
     Output("mid_price", "children"),
     Input("aggregation_level", "value"), # Triggers when theres a change in the agg level dropdown
     Input("quantity_precision", "value"),
@@ -121,7 +190,7 @@ def update_orderbook(agg_level, quantity_precision, price_precision, pair, inter
 
     params = {
         "symbol": pair.upper(),
-        "limit": "100",
+        "limit": "5000",
     }
 
     data = requests.get(orderbook_url, params=params).json()
@@ -153,7 +222,8 @@ def update_orderbook(agg_level, quantity_precision, price_precision, pair, inter
     
     mid_price = f"%.{price_precision}f" % mid_price
 
-    return bids_df.to_dict("records"), asks_df.to_dict("records"), mid_price  # converts to list of dictionaries
+    return bids_df.to_dict("records"), table_styling(bids_df, "bid"),\
+        asks_df.to_dict("records"), table_styling(asks_df, "ask"), mid_price  # converts to list of dictionaries
 
 
 if __name__ == "__main__":
