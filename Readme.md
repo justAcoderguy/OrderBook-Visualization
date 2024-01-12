@@ -4,7 +4,7 @@ In this project, I tried to visualise the everyday order-book we come across on 
 
 #### How?
 I've used **Plotly Dash** in python to achieve this goal of visualization coupled with a bit of css ( again, through Dash itself ).
-The data is coming in from **Binance REST API** and refreshes every 3s ( set by me ) - *my goal here was processing the data and visualizing it not ultra low latency*
+The data is coming in from **Binance REST API** and refreshes every 3s ( set by me ) - *my goal here was processing the data and visualizing it, not ultra low latency*
 The data is processed using **pandas** dataframes. 
 
 #### Why?
@@ -12,3 +12,5 @@ Because why not? I've been trading the forex and crypto market for more than 4 y
 provided with. And I wanted to do it myself! 
 #### Lets see it?
 Sure!
+
+https://github.com/justAcoderguy/OrderBook-Visualization/assets/52568587/df5635cc-17ab-4c19-82cd-585741c567df
